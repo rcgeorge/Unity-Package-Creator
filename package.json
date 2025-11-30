@@ -1,0 +1,19 @@
+{
+  "name": "com.instemic.package-creator",
+  "version": "1.0.0",
+  "displayName": "Unity Package Creator",
+  "description": "A Unity Editor tool for creating UPM (Unity Package Manager) packages with proper structure and configuration",
+  "unity": "6000.2",
+  "keywords": [
+    "upm",
+    "package",
+    "tool",
+    "editor",
+    "creator"
+  ],
+  "author": {
+    "name": "Instemic",
+    "url": "https://github.com/rcgeorge"
+  },
+  "license": "MIT"
+}
