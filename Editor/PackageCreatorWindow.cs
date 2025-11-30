@@ -17,11 +17,11 @@ namespace Instemic.PackageCreator.Editor
     public class PackageCreatorWindow : EditorWindow
     {
         private PackageTemplate selectedTemplate = PackageTemplate.Universal;
-        private string companyName = "mycompany";
+        private string companyName = "";
         private string packageName = "my-package";
         private string displayName = "My Package";
         private string description = "Description of my package";
-        private string unityVersion = "6000.2";
+        private string unityVersion = "";
         private string author = "";
         private string outputPath = "";
         
@@ -48,6 +48,25 @@ namespace Instemic.PackageCreator.Editor
             // Set default output path to Packages folder (normalized)
             string projectPath = Path.GetDirectoryName(Application.dataPath);
             outputPath = Path.Combine(projectPath, "Packages");
+
+            // Set default company name from Unity project settings
+            if (string.IsNullOrEmpty(companyName))
+            {
+                string sanitized = SanitizeForPackageId(PlayerSettings.companyName);
+                companyName = !string.IsNullOrEmpty(sanitized) ? sanitized : "mycompany";
+            }
+
+            // Set default Unity version from current editor version
+            if (string.IsNullOrEmpty(unityVersion))
+            {
+                unityVersion = GetDefaultUnityVersion();
+            }
+
+            // Set default author from company name if not set
+            if (string.IsNullOrEmpty(author))
+            {
+                author = PlayerSettings.companyName;
+            }
         }
 
         private void OnGUI()
@@ -881,14 +900,61 @@ namespace Instemic.PackageCreator.Editor
             // Convert com.company.package-name to Company.PackageName
             var parts = packageId.Split('.');
             var result = new System.Text.StringBuilder();
-            
+
             for (int i = 1; i < parts.Length; i++) // Skip 'com'
             {
                 if (i > 1) result.Append(".");
                 result.Append(ToPascalCase(parts[i]));
             }
-            
+
             return result.ToString();
+        }
+
+        private string SanitizeForPackageId(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "";
+
+            // Convert to lowercase, replace spaces with hyphens, remove invalid characters
+            var result = new System.Text.StringBuilder();
+            foreach (char c in input.ToLowerInvariant())
+            {
+                if (char.IsLetterOrDigit(c))
+                    result.Append(c);
+                else if (c == ' ' || c == '_' || c == '-')
+                    result.Append('-');
+            }
+
+            // Remove consecutive hyphens and trim hyphens from ends
+            string sanitized = result.ToString();
+            while (sanitized.Contains("--"))
+                sanitized = sanitized.Replace("--", "-");
+
+            return sanitized.Trim('-');
+        }
+
+        private string GetDefaultUnityVersion()
+        {
+            // Parse Application.unityVersion (e.g., "6000.2.1f1") to major.minor (e.g., "6000.2")
+            string version = Application.unityVersion;
+            var parts = version.Split('.');
+
+            if (parts.Length >= 2)
+            {
+                // Second part may have suffix like "2f1", extract just the number
+                string minorPart = parts[1];
+                var minorDigits = new System.Text.StringBuilder();
+                foreach (char c in minorPart)
+                {
+                    if (char.IsDigit(c))
+                        minorDigits.Append(c);
+                    else
+                        break;
+                }
+
+                return $"{parts[0]}.{minorDigits}";
+            }
+
+            return "6000.0"; // Fallback
         }
     }
 }
