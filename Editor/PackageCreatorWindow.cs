@@ -254,6 +254,12 @@ namespace Instemic.PackageCreator.Editor
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Data"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "Android"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "iOS"));
+            
+            // PHASE 1: Create Core, Utilities, and Data folders
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Core"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Utilities"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Data"));
+            
             Directory.CreateDirectory(Path.Combine(packagePath, "Editor", "Scripts"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Tests", "Editor"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Tests", "Runtime"));
@@ -283,26 +289,35 @@ namespace Instemic.PackageCreator.Editor
             CreateDisplaySubsystemExample(Path.Combine(packagePath, "Runtime", "Subsystems"), packageId);
             CreateInputSubsystemStub(Path.Combine(packagePath, "Runtime", "Subsystems"), packageId);
 
-            // Create Core components (universal XR patterns)
-            CreateXREventSystemTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            // PHASE 1: Create Core Components
             CreateXRPermissionManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
-            CreateXRLifecycleManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXREventSystemTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            
+            // PHASE 2: Service Integration
             CreateXRServiceConnectionTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
             CreateXRMemoryBridgeTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
-
-            // Create Utility components
+            CreateXRLifecycleManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            
+            // PHASE 1: Create Utilities
             CreateXRCoordinateConverterTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            
+            // PHASE 3: Create Advanced Utilities
             CreateXRFeatureDetectorTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
             CreateXRTrackingModeManagerTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
             CreateXRCalibrationManagerTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
             CreateXRPerformanceMonitorTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
-
-            // Create Data structures
+            
+            // PHASE 1: Create Data Structures
             CreateXRDataStructuresTemplate(Path.Combine(packagePath, "Runtime", "Data"), packageId);
+            
+            // Debug Overlay
+            CreateXRDebugOverlayTemplate(Path.Combine(packagePath, "Runtime", "Scripts"), packageId);
 
             // Create helper README files
             CreateSubsystemsReadme(Path.Combine(packagePath, "Runtime", "Subsystems"));
             CreatePluginsReadme(Path.Combine(packagePath, "Runtime", "Plugins"));
+            
+            // PHASE 1: Create Core/Utilities/Data READMEs
             CreateCoreReadme(Path.Combine(packagePath, "Runtime", "Core"));
             CreateUtilitiesReadme(Path.Combine(packagePath, "Runtime", "Utilities"));
             CreateDataReadme(Path.Combine(packagePath, "Runtime", "Data"));
@@ -657,6 +672,13 @@ namespace Instemic.PackageCreator.Editor
             code.AppendLine();
             code.AppendLine("        /// <summary>Whether debug logging is enabled.</summary>");
             code.AppendLine("        public bool EnableDebugLogging => enableDebugLogging;");
+            code.AppendLine();
+            code.AppendLine("        [SerializeField]");
+            code.AppendLine("        [Tooltip(\"Show debug overlay with FPS, display info, tracking status\")]");
+            code.AppendLine("        private bool showDebugOverlay = true;");
+            code.AppendLine();
+            code.AppendLine("        /// <summary>Whether debug overlay is enabled.</summary>");
+            code.AppendLine("        public bool ShowDebugOverlay => showDebugOverlay;");
             code.AppendLine();
             code.AppendLine("        [Header(\"Display Settings\")]");
             code.AppendLine();
@@ -1831,6 +1853,644 @@ namespace Instemic.PackageCreator.Editor
             }
 
             return "6000.0"; // Fallback
+        }
+
+        // ========================================
+        // PHASE 1: CRITICAL CORE COMPONENTS  
+        // Universal XR patterns from Viture analysis
+        // ========================================
+
+        private void CreateXRPermissionManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "PermissionManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using System.Collections.Generic;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine("#if UNITY_ANDROID");
+            code.AppendLine("using UnityEngine.Android;");
+            code.AppendLine("#endif");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum XRPermission { Camera, Sensors, XRService, SpatialMapping, HandTracking, Custom }");
+            code.AppendLine();
+            code.AppendLine("        private Dictionary<XRPermission, string> permissionMap = new Dictionary<XRPermission, string>");
+            code.AppendLine("        {");
+            code.AppendLine("            { XRPermission.Camera, \"android.permission.CAMERA\" }");
+            code.AppendLine("        };");
+            code.AppendLine();
+            code.AppendLine("        public bool HasPermission(XRPermission permission)");
+            code.AppendLine("        {");
+            code.AppendLine("#if UNITY_ANDROID");
+            code.AppendLine("            if (!permissionMap.ContainsKey(permission)) return false;");
+            code.AppendLine("            return Permission.HasUserAuthorizedPermission(permissionMap[permission]);");
+            code.AppendLine("#else");
+            code.AppendLine("            return true;");
+            code.AppendLine("#endif");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRCoordinateConverterTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "CoordinateConverter";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public static class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum CoordinateSystem { Unity, OpenGL, Unreal, DirectX }");
+            code.AppendLine();
+            code.AppendLine("        public static Quaternion ConvertRotation(Quaternion input, CoordinateSystem from, CoordinateSystem to)");
+            code.AppendLine("        {");
+            code.AppendLine("            if (from == to) return input;");
+            code.AppendLine("            if (from == CoordinateSystem.OpenGL && to == CoordinateSystem.Unity)");
+            code.AppendLine("                return new Quaternion(-input.x, -input.y, input.z, input.w);");
+            code.AppendLine("            if (from == CoordinateSystem.Unity && to == CoordinateSystem.OpenGL)");
+            code.AppendLine("                return new Quaternion(-input.x, -input.y, input.z, input.w);");
+            code.AppendLine("            return input;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public static Vector3 ConvertPosition(Vector3 input, CoordinateSystem from, CoordinateSystem to)");
+            code.AppendLine("        {");
+            code.AppendLine("            if (from == to) return input;");
+            code.AppendLine("            if ((from == CoordinateSystem.OpenGL && to == CoordinateSystem.Unity) ||");
+            code.AppendLine("                (from == CoordinateSystem.Unity && to == CoordinateSystem.OpenGL))");
+            code.AppendLine("                return new Vector3(input.x, input.y, -input.z);");
+            code.AppendLine("            return input;");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXREventSystemTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "EventSystem";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        private static " + className + " instance;");
+            code.AppendLine("        public static " + className + " Instance => instance ?? (instance = new " + className + "());");
+            code.AppendLine();
+            code.AppendLine("        public event Action<Pose> OnPoseUpdated;");
+            code.AppendLine("        public event Action OnDeviceConnected;");
+            code.AppendLine("        public event Action OnDeviceDisconnected;");
+            code.AppendLine("        public event Action<string> OnError;");
+            code.AppendLine();
+            code.AppendLine("        public void RaisePoseUpdated(Pose pose) => OnPoseUpdated?.Invoke(pose);");
+            code.AppendLine("        public void RaiseDeviceConnected() => OnDeviceConnected?.Invoke();");
+            code.AppendLine("        public void RaiseDeviceDisconnected() => OnDeviceDisconnected?.Invoke();");
+            code.AppendLine("        public void RaiseError(string message) => OnError?.Invoke(message);");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRDataStructuresTemplate(string folder, string packageId)
+        {
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    [Serializable]");
+            code.AppendLine("    public struct XRIMUData");
+            code.AppendLine("    {");
+            code.AppendLine("        public Vector3 acceleration;");
+            code.AppendLine("        public Vector3 angularVelocity;");
+            code.AppendLine("        public float timestamp;");
+            code.AppendLine("    }");
+            code.AppendLine();
+            code.AppendLine("    [Serializable]");
+            code.AppendLine("    public struct XRHandPose");
+            code.AppendLine("    {");
+            code.AppendLine("        public bool isTracked;");
+            code.AppendLine("        public Pose wristPose;");
+            code.AppendLine("        public float confidence;");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, "XRDataStructures.cs"), code.ToString());
+        }
+
+        private void CreateCoreReadme(string folder)
+        {
+            var readme = @"# XR Core Components
+
+Essential infrastructure for XR device integration.
+
+## Files
+- **XRPermissionManager**: Handles platform permissions
+- **XREventSystem**: Central event/callback system
+- **XRServiceConnection**: Connects to device system services (Android AIDL, iOS XPC)
+- **XRMemoryBridge**: Manages shared memory for sensor data
+- **XRLifecycleManager**: Handles init/pause/resume/shutdown
+
+## Usage
+These are templates - customize for your device!
+";
+            File.WriteAllText(Path.Combine(folder, "_README.md"), readme);
+        }
+
+        private void CreateUtilitiesReadme(string folder)
+        {
+            var readme = @"# XR Utilities
+
+Helper utilities for XR development.
+
+## Files
+- **XRCoordinateConverter**: Converts between coordinate systems
+- **XRFeatureDetector**: Detects device capabilities
+- **XRTrackingModeManager**: Manages 3DOF/6DOF tracking modes
+- **XRCalibrationManager**: Handles IPD, height, tracking reset
+- **XRPerformanceMonitor**: Monitors FPS, latency, dropped frames
+
+## Coordinate Systems
+| System | Handedness | Up | Forward |
+|--------|------------|-------|---------|
+| Unity | Left | Y | Z |
+| OpenGL | Right | Y | -Z |
+";
+            File.WriteAllText(Path.Combine(folder, "_README.md"), readme);
+        }
+
+        private void CreateDataReadme(string folder)
+        {
+            var readme = @"# XR Data Structures
+
+Common data structures used across XR subsystems.
+
+## Structures
+- **XRIMUData**: IMU sensor data
+- **XRHandPose**: Hand tracking data
+";
+            File.WriteAllText(Path.Combine(folder, "_README.md"), readme);
+        }
+
+        // ========================================
+        // PHASE 2: SERVICE INTEGRATION COMPONENTS
+        // ========================================
+
+        private void CreateXRServiceConnectionTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "ServiceConnection";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Manages connection to device's system service (Android AIDL, iOS XPC, etc.)");
+            code.AppendLine("    /// EXAMPLE: Viture uses viture.xr.service via Android AIDL");
+            code.AppendLine("    /// TODO: Implement PlatformConnect() for your device");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public abstract class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum ConnectionState { Disconnected, Connecting, Connected, Error }");
+            code.AppendLine();
+            code.AppendLine("        protected ConnectionState currentState = ConnectionState.Disconnected;");
+            code.AppendLine("        public ConnectionState State => currentState;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool Connect()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (currentState == ConnectionState.Connected) return true;");
+            code.AppendLine("            currentState = ConnectionState.Connecting;");
+            code.AppendLine("            try");
+            code.AppendLine("            {");
+            code.AppendLine("                if (PlatformConnect())");
+            code.AppendLine("                {");
+            code.AppendLine("                    currentState = ConnectionState.Connected;");
+            code.AppendLine("                    return true;");
+            code.AppendLine("                }");
+            code.AppendLine("            }");
+            code.AppendLine("            catch (Exception e)");
+            code.AppendLine("            {");
+            code.AppendLine("                Debug.LogError($\"Connection failed: {e.Message}\");");
+            code.AppendLine("                currentState = ConnectionState.Error;");
+            code.AppendLine("            }");
+            code.AppendLine("            currentState = ConnectionState.Disconnected;");
+            code.AppendLine("            return false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Disconnect()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (currentState != ConnectionState.Connected) return;");
+            code.AppendLine("            PlatformDisconnect();");
+            code.AppendLine("            currentState = ConnectionState.Disconnected;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        protected abstract bool PlatformConnect();");
+            code.AppendLine("        protected abstract void PlatformDisconnect();");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRMemoryBridgeTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "MemoryBridge";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Manages shared memory for high-performance sensor data transfer.");
+            code.AppendLine("    /// EXAMPLE: Viture uses mmap for pose data from XRService");
+            code.AppendLine("    /// TODO: Add DllImport bindings to your native library");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public abstract class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        protected bool isAttached = false;");
+            code.AppendLine("        public bool IsAttached => isAttached;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool AttachMemory(int fileDescriptor)");
+            code.AppendLine("        {");
+            code.AppendLine("            if (isAttached) return true;");
+            code.AppendLine("            try");
+            code.AppendLine("            {");
+            code.AppendLine("                // TODO: Call native library attach function");
+            code.AppendLine("                // Example: NativeAttachPoseMemory(fileDescriptor);");
+            code.AppendLine("                isAttached = true;");
+            code.AppendLine("                return true;");
+            code.AppendLine("            }");
+            code.AppendLine("            catch (Exception e)");
+            code.AppendLine("            {");
+            code.AppendLine("                Debug.LogError($\"Failed to attach memory: {e.Message}\");");
+            code.AppendLine("                return false;");
+            code.AppendLine("            }");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void DetachMemory()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (!isAttached) return;");
+            code.AppendLine("            // TODO: Call native library detach function");
+            code.AppendLine("            isAttached = false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        // TODO: Add DllImport bindings");
+            code.AppendLine("        // [DllImport(\"your_xr_lib\")]");
+            code.AppendLine("        // private static extern void NativeAttachPoseMemory(int fd);");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRLifecycleManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "LifecycleManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Manages XR device lifecycle (init, pause, resume, shutdown).");
+            code.AppendLine("    /// EXAMPLE: Called from XRLoader Initialize/Start/Stop/Deinitialize");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public abstract class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum LifecycleState { Uninitialized, Initialized, Running, Paused, Stopped }");
+            code.AppendLine();
+            code.AppendLine("        protected LifecycleState state = LifecycleState.Uninitialized;");
+            code.AppendLine("        public LifecycleState State => state;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool Initialize()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Uninitialized) return true;");
+            code.AppendLine("            state = LifecycleState.Initialized;");
+            code.AppendLine("            return true;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Start()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Initialized) return;");
+            code.AppendLine("            state = LifecycleState.Running;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Pause()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Running) return;");
+            code.AppendLine("            state = LifecycleState.Paused;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Resume()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Paused) return;");
+            code.AppendLine("            state = LifecycleState.Running;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Stop()");
+            code.AppendLine("        {");
+            code.AppendLine("            state = LifecycleState.Stopped;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Shutdown()");
+            code.AppendLine("        {");
+            code.AppendLine("            Stop();");
+            code.AppendLine("            state = LifecycleState.Uninitialized;");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        // ========================================
+        // PHASE 3: ADVANCED UTILITIES
+        // ========================================
+
+        private void CreateXRFeatureDetectorTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "FeatureDetector";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum Feature");
+            code.AppendLine("        {");
+            code.AppendLine("            RotationalTracking,");
+            code.AppendLine("            PositionalTracking,");
+            code.AppendLine("            HandTracking,");
+            code.AppendLine("            EyeTracking,");
+            code.AppendLine("            SpatialMapping,");
+            code.AppendLine("            Passthrough");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool IsSupported(Feature feature)");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Implement feature detection for your device");
+            code.AppendLine("            return false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual string GetDeviceName()");
+            code.AppendLine("        {");
+            code.AppendLine("            return \"Unknown Device\";");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRTrackingModeManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "TrackingModeManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum TrackingMode");
+            code.AppendLine("        {");
+            code.AppendLine("            None,");
+            code.AppendLine("            ThreeDOF,");
+            code.AppendLine("            SixDOF,");
+            code.AppendLine("            WorldScale");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private TrackingMode currentMode = TrackingMode.None;");
+            code.AppendLine("        public TrackingMode CurrentMode => currentMode;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool SetTrackingMode(TrackingMode mode)");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Implement mode switching");
+            code.AppendLine("            currentMode = mode;");
+            code.AppendLine("            return true;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void ResetTracking()");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Reset tracking origin");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRCalibrationManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "CalibrationManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum CalibrationType");
+            code.AppendLine("        {");
+            code.AppendLine("            IPD,");
+            code.AppendLine("            Height,");
+            code.AppendLine("            TrackingOrigin,");
+            code.AppendLine("            DisplayAlignment");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private float ipd = 0.063f;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool Calibrate(CalibrationType type)");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Implement calibration");
+            code.AppendLine("            return false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public float GetIPD() => ipd;");
+            code.AppendLine("        public void SetIPD(float value) => ipd = value;");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRPerformanceMonitorTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "PerformanceMonitor";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        private float currentFPS;");
+            code.AppendLine("        private float averageFPS;");
+            code.AppendLine("        private int droppedFrames;");
+            code.AppendLine();
+            code.AppendLine("        public float CurrentFPS => currentFPS;");
+            code.AppendLine("        public float AverageFPS => averageFPS;");
+            code.AppendLine("        public int DroppedFrames => droppedFrames;");
+            code.AppendLine();
+            code.AppendLine("        public void Update()");
+            code.AppendLine("        {");
+            code.AppendLine("            currentFPS = 1.0f / Time.deltaTime;");
+            code.AppendLine("            // TODO: Calculate average FPS and detect dropped frames");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRDebugOverlayTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "DebugOverlay";
+            string settingsClassName = ToPascalCase(packageName) + "Settings";
+            string performanceClassName = ToPascalCase(packageName) + "PerformanceMonitor";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine("using UnityEngine.XR.Management;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Debug overlay for XR plugin - shows FPS, display info, tracking status.");
+            code.AppendLine("    /// Add this component to a GameObject in your scene for instant visual feedback.");
+            code.AppendLine("    /// Toggle visibility via XR Plug-in Management settings.");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public class " + className + " : MonoBehaviour");
+            code.AppendLine("    {");
+            code.AppendLine("        private " + performanceClassName + " perfMonitor;");
+            code.AppendLine("        private bool isVisible = true;");
+            code.AppendLine("        private GUIStyle labelStyle;");
+            code.AppendLine("        private GUIStyle headerStyle;");
+            code.AppendLine();
+            code.AppendLine("        private void Start()");
+            code.AppendLine("        {");
+            code.AppendLine("            perfMonitor = new " + performanceClassName + "();");
+            code.AppendLine("            ");
+            code.AppendLine("            // Check settings for overlay visibility");
+            code.AppendLine("#if UNITY_EDITOR");
+            code.AppendLine("            var settings = " + settingsClassName + ".GetSettings(UnityEditor.EditorUserBuildSettings.selectedBuildTargetGroup);");
+            code.AppendLine("#else");
+            code.AppendLine("            var settings = Resources.FindObjectsOfTypeAll<" + settingsClassName + ">();");
+            code.AppendLine("#endif");
+            code.AppendLine("            if (settings != null)");
+            code.AppendLine("            {");
+            code.AppendLine("#if UNITY_EDITOR");
+            code.AppendLine("                isVisible = settings.ShowDebugOverlay;");
+            code.AppendLine("#else");
+            code.AppendLine("                isVisible = settings.Length > 0 && settings[0].ShowDebugOverlay;");
+            code.AppendLine("#endif");
+            code.AppendLine("            }");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private void Update()");
+            code.AppendLine("        {");
+            code.AppendLine("            perfMonitor?.Update();");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private void OnGUI()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (!isVisible) return;");
+            code.AppendLine();
+            code.AppendLine("            // Initialize styles");
+            code.AppendLine("            if (labelStyle == null)");
+            code.AppendLine("            {");
+            code.AppendLine("                labelStyle = new GUIStyle(GUI.skin.label)");
+            code.AppendLine("                {");
+            code.AppendLine("                    fontSize = 24,");
+            code.AppendLine("                    normal = { textColor = Color.white },");
+            code.AppendLine("                    fontStyle = FontStyle.Bold");
+            code.AppendLine("                };");
+            code.AppendLine();
+            code.AppendLine("                headerStyle = new GUIStyle(labelStyle)");
+            code.AppendLine("                {");
+            code.AppendLine("                    fontSize = 28,");
+            code.AppendLine("                    normal = { textColor = Color.green }");
+            code.AppendLine("                };");
+            code.AppendLine("            }");
+            code.AppendLine();
+            code.AppendLine("            // Draw semi-transparent background");
+            code.AppendLine("            GUI.Box(new Rect(10, 10, 400, 300), \"\");");
+            code.AppendLine();
+            code.AppendLine("            float y = 20;");
+            code.AppendLine("            float lineHeight = 35;");
+            code.AppendLine();
+            code.AppendLine("            // Header");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), \"XR Debug Info\", headerStyle);");
+            code.AppendLine("            y += lineHeight + 10;");
+            code.AppendLine();
+            code.AppendLine("            // FPS");
+            code.AppendLine("            float fps = perfMonitor?.CurrentFPS ?? 0;");
+            code.AppendLine("            Color fpsColor = fps >= 60 ? Color.green : (fps >= 30 ? Color.yellow : Color.red);");
+            code.AppendLine("            labelStyle.normal.textColor = fpsColor;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"FPS: {fps:F1}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Reset color");
+            code.AppendLine("            labelStyle.normal.textColor = Color.white;");
+            code.AppendLine();
+            code.AppendLine("            // Display Info");
+            code.AppendLine("            int displayCount = Display.displays.Length;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"Displays: {displayCount}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Active Display");
+            code.AppendLine("            int activeDisplay = Camera.main?.targetDisplay ?? 0;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"Active Display: {activeDisplay}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // XR Active");
+            code.AppendLine("            bool xrActive = XRGeneralSettings.Instance?.Manager?.activeLoader != null;");
+            code.AppendLine("            labelStyle.normal.textColor = xrActive ? Color.green : Color.red;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"XR Active: {(xrActive ? \\\"Yes\\\" : \\\"No\\\")}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Reset color");
+            code.AppendLine("            labelStyle.normal.textColor = Color.white;");
+            code.AppendLine();
+            code.AppendLine("            // Resolution");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"Resolution: {Screen.width}x{Screen.height}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Toggle hint");
+            code.AppendLine("            labelStyle.fontSize = 18;");
+            code.AppendLine("            labelStyle.normal.textColor = Color.gray;");
+            code.AppendLine("            GUI.Label(new Rect(20, y + 20, 380, 30), \"Toggle in XR Plug-in Settings\", labelStyle);");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
         }
     }
 }
