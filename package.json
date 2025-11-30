@@ -1,21 +1,16 @@
 {
   "name": "com.instemic.package-creator",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "displayName": "Unity Package Creator",
-  "description": "A Unity Editor tool for creating UPM (Unity Package Manager) packages with multiple templates including XR Plugin Providers",
+  "description": "Editor tool for creating Unity Package Manager (UPM) packages with proper structure and templates",
   "unity": "6000.2",
   "keywords": [
     "upm",
     "package",
     "tool",
-    "editor",
-    "creator",
-    "xr",
-    "template"
+    "creator"
   ],
   "author": {
-    "name": "Instemic",
-    "url": "https://github.com/rcgeorge"
-  },
-  "license": "MIT"
+    "name": "Instemic"
+  }
 }
