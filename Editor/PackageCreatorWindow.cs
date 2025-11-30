@@ -290,6 +290,11 @@ namespace Instemic.PackageCreator.Editor
             CreateXRPermissionManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
             CreateXREventSystemTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
             
+            // PHASE 2: Service Integration
+            CreateXRServiceConnectionTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXRMemoryBridgeTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXRLifecycleManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            
             // PHASE 1: Create Utilities
             CreateXRCoordinateConverterTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
             
@@ -1976,6 +1981,9 @@ Essential infrastructure for XR device integration.
 ## Files
 - **XRPermissionManager**: Handles platform permissions
 - **XREventSystem**: Central event/callback system
+- **XRServiceConnection**: Connects to device system services (Android AIDL, iOS XPC)
+- **XRMemoryBridge**: Manages shared memory for sensor data
+- **XRLifecycleManager**: Handles init/pause/resume/shutdown
 
 ## Usage
 These are templates - customize for your device!
@@ -2012,6 +2020,182 @@ Common data structures used across XR subsystems.
 - **XRHandPose**: Hand tracking data
 ";
             File.WriteAllText(Path.Combine(folder, "_README.md"), readme);
+        }
+
+        // ========================================
+        // PHASE 2: SERVICE INTEGRATION COMPONENTS
+        // ========================================
+
+        private void CreateXRServiceConnectionTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "ServiceConnection";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Manages connection to device's system service (Android AIDL, iOS XPC, etc.)");
+            code.AppendLine("    /// EXAMPLE: Viture uses viture.xr.service via Android AIDL");
+            code.AppendLine("    /// TODO: Implement PlatformConnect() for your device");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public abstract class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum ConnectionState { Disconnected, Connecting, Connected, Error }");
+            code.AppendLine();
+            code.AppendLine("        protected ConnectionState currentState = ConnectionState.Disconnected;");
+            code.AppendLine("        public ConnectionState State => currentState;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool Connect()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (currentState == ConnectionState.Connected) return true;");
+            code.AppendLine("            currentState = ConnectionState.Connecting;");
+            code.AppendLine("            try");
+            code.AppendLine("            {");
+            code.AppendLine("                if (PlatformConnect())");
+            code.AppendLine("                {");
+            code.AppendLine("                    currentState = ConnectionState.Connected;");
+            code.AppendLine("                    return true;");
+            code.AppendLine("                }");
+            code.AppendLine("            }");
+            code.AppendLine("            catch (Exception e)");
+            code.AppendLine("            {");
+            code.AppendLine("                Debug.LogError($\"Connection failed: {e.Message}\");");
+            code.AppendLine("                currentState = ConnectionState.Error;");
+            code.AppendLine("            }");
+            code.AppendLine("            currentState = ConnectionState.Disconnected;");
+            code.AppendLine("            return false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Disconnect()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (currentState != ConnectionState.Connected) return;");
+            code.AppendLine("            PlatformDisconnect();");
+            code.AppendLine("            currentState = ConnectionState.Disconnected;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        protected abstract bool PlatformConnect();");
+            code.AppendLine("        protected abstract void PlatformDisconnect();");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRMemoryBridgeTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "MemoryBridge";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Manages shared memory for high-performance sensor data transfer.");
+            code.AppendLine("    /// EXAMPLE: Viture uses mmap for pose data from XRService");
+            code.AppendLine("    /// TODO: Add DllImport bindings to your native library");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public abstract class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        protected bool isAttached = false;");
+            code.AppendLine("        public bool IsAttached => isAttached;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool AttachMemory(int fileDescriptor)");
+            code.AppendLine("        {");
+            code.AppendLine("            if (isAttached) return true;");
+            code.AppendLine("            try");
+            code.AppendLine("            {");
+            code.AppendLine("                // TODO: Call native library attach function");
+            code.AppendLine("                // Example: NativeAttachPoseMemory(fileDescriptor);");
+            code.AppendLine("                isAttached = true;");
+            code.AppendLine("                return true;");
+            code.AppendLine("            }");
+            code.AppendLine("            catch (Exception e)");
+            code.AppendLine("            {");
+            code.AppendLine("                Debug.LogError($\"Failed to attach memory: {e.Message}\");");
+            code.AppendLine("                return false;");
+            code.AppendLine("            }");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void DetachMemory()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (!isAttached) return;");
+            code.AppendLine("            // TODO: Call native library detach function");
+            code.AppendLine("            isAttached = false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        // TODO: Add DllImport bindings");
+            code.AppendLine("        // [DllImport(\"your_xr_lib\")]");
+            code.AppendLine("        // private static extern void NativeAttachPoseMemory(int fd);");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRLifecycleManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "LifecycleManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Manages XR device lifecycle (init, pause, resume, shutdown).");
+            code.AppendLine("    /// EXAMPLE: Called from XRLoader Initialize/Start/Stop/Deinitialize");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public abstract class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum LifecycleState { Uninitialized, Initialized, Running, Paused, Stopped }");
+            code.AppendLine();
+            code.AppendLine("        protected LifecycleState state = LifecycleState.Uninitialized;");
+            code.AppendLine("        public LifecycleState State => state;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool Initialize()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Uninitialized) return true;");
+            code.AppendLine("            state = LifecycleState.Initialized;");
+            code.AppendLine("            return true;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Start()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Initialized) return;");
+            code.AppendLine("            state = LifecycleState.Running;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Pause()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Running) return;");
+            code.AppendLine("            state = LifecycleState.Paused;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Resume()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (state != LifecycleState.Paused) return;");
+            code.AppendLine("            state = LifecycleState.Running;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Stop()");
+            code.AppendLine("        {");
+            code.AppendLine("            state = LifecycleState.Stopped;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void Shutdown()");
+            code.AppendLine("        {");
+            code.AppendLine("            Stop();");
+            code.AppendLine("            state = LifecycleState.Uninitialized;");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
         }
     }
 }
