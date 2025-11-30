@@ -2465,8 +2465,9 @@ Common data structures used across XR subsystems.
             code.AppendLine();
             code.AppendLine("            // XR Active");
             code.AppendLine("            bool xrActive = XRGeneralSettings.Instance?.Manager?.activeLoader != null;");
+            code.AppendLine("            string xrStatus = xrActive ? \"Yes\" : \"No\";");
             code.AppendLine("            labelStyle.normal.textColor = xrActive ? Color.green : Color.red;");
-            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"XR Active: {(xrActive ? \\\"Yes\\\" : \\\"No\\\")}\", labelStyle);");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"XR Active: {xrStatus}\", labelStyle);");
             code.AppendLine("            y += lineHeight;");
             code.AppendLine();
             code.AppendLine("            // Reset color");
