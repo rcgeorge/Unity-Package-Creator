@@ -113,9 +113,9 @@ namespace Instemic.PackageCreator.Editor
             
             GUILayout.Space(20);
             
-            // Preview of package name
+            // Preview of package name (shown lowercase as Unity requires)
             EditorGUILayout.LabelField("Package ID", EditorStyles.boldLabel);
-            EditorGUILayout.SelectableLabel($"com.{companyName}.{packageName}", EditorStyles.textField, GUILayout.Height(20));
+            EditorGUILayout.SelectableLabel(GetPackageId(), EditorStyles.textField, GUILayout.Height(20));
             
             GUILayout.Space(20);
             
@@ -128,9 +128,15 @@ namespace Instemic.PackageCreator.Editor
             EditorGUILayout.EndScrollView();
         }
 
+        private string GetPackageId()
+        {
+            // Unity package IDs must be lowercase
+            return $"com.{companyName}.{packageName}".ToLowerInvariant();
+        }
+
         private string GetFullPackagePath()
         {
-            return Path.Combine(outputPath, $"com.{companyName}.{packageName}");
+            return Path.Combine(outputPath, GetPackageId());
         }
 
         private void CreatePackage()
@@ -187,7 +193,7 @@ namespace Instemic.PackageCreator.Editor
 
         private void CreatePackageStructure(string packagePath)
         {
-            string packageId = $"com.{companyName}.{packageName}";
+            string packageId = GetPackageId();
             
             // Create base directory
             Directory.CreateDirectory(packagePath);
