@@ -325,9 +325,6 @@ namespace Instemic.PackageCreator.Editor
             // Create XR-specific documentation
             CreateGettingStarted(packagePath, packageId);
             CreateArchitectureDoc(packagePath, packageId);
-            CreateServiceIntegrationDoc(packagePath, packageId);
-            CreateCoordinateSystemsDoc(packagePath, packageId);
-            CreatePerformanceGuideDoc(packagePath, packageId);
         }
 
         private void CreateEditorOnlyPackage(string packagePath, string packageId)
