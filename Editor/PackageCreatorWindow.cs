@@ -473,6 +473,7 @@ namespace Instemic.PackageCreator.Editor
             var code = new System.Text.StringBuilder();
             code.AppendLine("using System.Collections.Generic;");
             code.AppendLine("using UnityEngine;");
+            code.AppendLine("using UnityEngine.XR;");
             code.AppendLine("using UnityEngine.XR.Management;");
             code.AppendLine();
             code.AppendLine($"namespace {GetNamespace(packageId)}");
