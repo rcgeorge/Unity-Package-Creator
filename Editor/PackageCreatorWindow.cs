@@ -249,6 +249,9 @@ namespace Instemic.PackageCreator.Editor
             // Create directories
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Scripts"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Subsystems"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Core"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Utilities"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Data"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "Android"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "iOS"));
             
@@ -262,20 +265,20 @@ namespace Instemic.PackageCreator.Editor
             Directory.CreateDirectory(Path.Combine(packagePath, "Tests", "Runtime"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Samples~"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Documentation~"));
-            
+
             // Create package.json with XR dependencies
             var dependencies = new Dictionary<string, string>
             {
                 { "com.unity.xr.management", "4.0.0" }
             };
             CreatePackageJson(packagePath, packageId, dependencies);
-            
+
             // Create assembly definition files with XR references
             CreateAsmdef(Path.Combine(packagePath, "Runtime"), $"{packageId}", packageId, false, new[] { "Unity.XR.Management" });
             CreateAsmdef(Path.Combine(packagePath, "Editor"), $"{packageId}.Editor", $"{packageId}.Editor", true, new[] { packageId, "Unity.XR.Management.Editor" });
             CreateTestAsmdef(Path.Combine(packagePath, "Tests", "Runtime"), $"{packageId}.Tests", packageId, false);
             CreateTestAsmdef(Path.Combine(packagePath, "Tests", "Editor"), $"{packageId}.Editor.Tests", $"{packageId}.Editor", true);
-            
+
             // Create XR-specific template files
             CreateXRLoaderTemplate(Path.Combine(packagePath, "Runtime", "Scripts"), packageId);
             CreateXRSettingsTemplate(Path.Combine(packagePath, "Runtime", "Scripts"), packageId);
@@ -322,6 +325,9 @@ namespace Instemic.PackageCreator.Editor
             // Create XR-specific documentation
             CreateGettingStarted(packagePath, packageId);
             CreateArchitectureDoc(packagePath, packageId);
+            CreateServiceIntegrationDoc(packagePath, packageId);
+            CreateCoordinateSystemsDoc(packagePath, packageId);
+            CreatePerformanceGuideDoc(packagePath, packageId);
         }
 
         private void CreateEditorOnlyPackage(string packagePath, string packageId)
