@@ -45,8 +45,8 @@ namespace Instemic.PackageCreator.Editor
 
         private void OnEnable()
         {
-            // Set default output path to parent of Assets folder
-            outputPath = Path.GetDirectoryName(Application.dataPath);
+            // Set default output path to Packages folder for immediate use
+            outputPath = Path.Combine(Application.dataPath, "..", "Packages");
         }
 
         private void OnGUI()
@@ -139,12 +139,24 @@ namespace Instemic.PackageCreator.Editor
             try
             {
                 CreatePackageStructure(packagePath);
-                EditorUtility.DisplayDialog("Success", 
-                    $"Package created successfully at:\n{packagePath}\n\nYou can now move this to your Unity project's Packages folder or publish it to GitHub.", 
-                    "OK");
+                
+                // Check if package was created in Packages folder
+                bool isInPackagesFolder = outputPath.EndsWith("Packages") || outputPath.Contains(Path.DirectorySeparatorChar + "Packages" + Path.DirectorySeparatorChar);
+                
+                string message = isInPackagesFolder 
+                    ? $"Package created successfully at:\n{packagePath}\n\nThe package is now available in Package Manager and ready to use!"
+                    : $"Package created successfully at:\n{packagePath}\n\nYou can now move this to your Unity project's Packages folder or publish it to GitHub.";
+                
+                EditorUtility.DisplayDialog("Success", message, "OK");
                 
                 // Open the folder
                 EditorUtility.RevealInFinder(packagePath);
+                
+                // Refresh the Asset Database if package is in Packages folder
+                if (isInPackagesFolder)
+                {
+                    AssetDatabase.Refresh();
+                }
             }
             catch (Exception e)
             {
