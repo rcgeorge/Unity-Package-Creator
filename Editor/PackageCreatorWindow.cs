@@ -251,6 +251,12 @@ namespace Instemic.PackageCreator.Editor
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Subsystems"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "Android"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "iOS"));
+            
+            // PHASE 1: Create Core, Utilities, and Data folders
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Core"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Utilities"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Data"));
+            
             Directory.CreateDirectory(Path.Combine(packagePath, "Editor", "Scripts"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Tests", "Editor"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Tests", "Runtime"));
@@ -280,9 +286,24 @@ namespace Instemic.PackageCreator.Editor
             CreateDisplaySubsystemExample(Path.Combine(packagePath, "Runtime", "Subsystems"), packageId);
             CreateInputSubsystemStub(Path.Combine(packagePath, "Runtime", "Subsystems"), packageId);
 
+            // PHASE 1: Create Core Components
+            CreateXRPermissionManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXREventSystemTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            
+            // PHASE 1: Create Utilities
+            CreateXRCoordinateConverterTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            
+            // PHASE 1: Create Data Structures
+            CreateXRDataStructuresTemplate(Path.Combine(packagePath, "Runtime", "Data"), packageId);
+
             // Create helper README files
             CreateSubsystemsReadme(Path.Combine(packagePath, "Runtime", "Subsystems"));
             CreatePluginsReadme(Path.Combine(packagePath, "Runtime", "Plugins"));
+            
+            // PHASE 1: Create Core/Utilities/Data READMEs
+            CreateCoreReadme(Path.Combine(packagePath, "Runtime", "Core"));
+            CreateUtilitiesReadme(Path.Combine(packagePath, "Runtime", "Utilities"));
+            CreateDataReadme(Path.Combine(packagePath, "Runtime", "Data"));
 
             // Create XR-specific documentation
             CreateGettingStarted(packagePath, packageId);
@@ -1805,6 +1826,192 @@ namespace Instemic.PackageCreator.Editor
             }
 
             return "6000.0"; // Fallback
+        }
+
+        // ========================================
+        // PHASE 1: CRITICAL CORE COMPONENTS  
+        // Universal XR patterns from Viture analysis
+        // ========================================
+
+        private void CreateXRPermissionManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "PermissionManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using System.Collections.Generic;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine("#if UNITY_ANDROID");
+            code.AppendLine("using UnityEngine.Android;");
+            code.AppendLine("#endif");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum XRPermission { Camera, Sensors, XRService, SpatialMapping, HandTracking, Custom }");
+            code.AppendLine();
+            code.AppendLine("        private Dictionary<XRPermission, string> permissionMap = new Dictionary<XRPermission, string>");
+            code.AppendLine("        {");
+            code.AppendLine("            { XRPermission.Camera, \"android.permission.CAMERA\" }");
+            code.AppendLine("        };");
+            code.AppendLine();
+            code.AppendLine("        public bool HasPermission(XRPermission permission)");
+            code.AppendLine("        {");
+            code.AppendLine("#if UNITY_ANDROID");
+            code.AppendLine("            if (!permissionMap.ContainsKey(permission)) return false;");
+            code.AppendLine("            return Permission.HasUserAuthorizedPermission(permissionMap[permission]);");
+            code.AppendLine("#else");
+            code.AppendLine("            return true;");
+            code.AppendLine("#endif");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRCoordinateConverterTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "CoordinateConverter";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public static class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum CoordinateSystem { Unity, OpenGL, Unreal, DirectX }");
+            code.AppendLine();
+            code.AppendLine("        public static Quaternion ConvertRotation(Quaternion input, CoordinateSystem from, CoordinateSystem to)");
+            code.AppendLine("        {");
+            code.AppendLine("            if (from == to) return input;");
+            code.AppendLine("            if (from == CoordinateSystem.OpenGL && to == CoordinateSystem.Unity)");
+            code.AppendLine("                return new Quaternion(-input.x, -input.y, input.z, input.w);");
+            code.AppendLine("            if (from == CoordinateSystem.Unity && to == CoordinateSystem.OpenGL)");
+            code.AppendLine("                return new Quaternion(-input.x, -input.y, input.z, input.w);");
+            code.AppendLine("            return input;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public static Vector3 ConvertPosition(Vector3 input, CoordinateSystem from, CoordinateSystem to)");
+            code.AppendLine("        {");
+            code.AppendLine("            if (from == to) return input;");
+            code.AppendLine("            if ((from == CoordinateSystem.OpenGL && to == CoordinateSystem.Unity) ||");
+            code.AppendLine("                (from == CoordinateSystem.Unity && to == CoordinateSystem.OpenGL))");
+            code.AppendLine("                return new Vector3(input.x, input.y, -input.z);");
+            code.AppendLine("            return input;");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXREventSystemTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "EventSystem";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        private static " + className + " instance;");
+            code.AppendLine("        public static " + className + " Instance => instance ?? (instance = new " + className + "());");
+            code.AppendLine();
+            code.AppendLine("        public event Action<Pose> OnPoseUpdated;");
+            code.AppendLine("        public event Action OnDeviceConnected;");
+            code.AppendLine("        public event Action OnDeviceDisconnected;");
+            code.AppendLine("        public event Action<string> OnError;");
+            code.AppendLine();
+            code.AppendLine("        public void RaisePoseUpdated(Pose pose) => OnPoseUpdated?.Invoke(pose);");
+            code.AppendLine("        public void RaiseDeviceConnected() => OnDeviceConnected?.Invoke();");
+            code.AppendLine("        public void RaiseDeviceDisconnected() => OnDeviceDisconnected?.Invoke();");
+            code.AppendLine("        public void RaiseError(string message) => OnError?.Invoke(message);");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRDataStructuresTemplate(string folder, string packageId)
+        {
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using System;");
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    [Serializable]");
+            code.AppendLine("    public struct XRIMUData");
+            code.AppendLine("    {");
+            code.AppendLine("        public Vector3 acceleration;");
+            code.AppendLine("        public Vector3 angularVelocity;");
+            code.AppendLine("        public float timestamp;");
+            code.AppendLine("    }");
+            code.AppendLine();
+            code.AppendLine("    [Serializable]");
+            code.AppendLine("    public struct XRHandPose");
+            code.AppendLine("    {");
+            code.AppendLine("        public bool isTracked;");
+            code.AppendLine("        public Pose wristPose;");
+            code.AppendLine("        public float confidence;");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, "XRDataStructures.cs"), code.ToString());
+        }
+
+        private void CreateCoreReadme(string folder)
+        {
+            var readme = @"# XR Core Components
+
+Essential infrastructure for XR device integration.
+
+## Files
+- **XRPermissionManager**: Handles platform permissions
+- **XREventSystem**: Central event/callback system
+
+## Usage
+These are templates - customize for your device!
+";
+            File.WriteAllText(Path.Combine(folder, "_README.md"), readme);
+        }
+
+        private void CreateUtilitiesReadme(string folder)
+        {
+            var readme = @"# XR Utilities
+
+Helper utilities for XR development.
+
+## Files
+- **XRCoordinateConverter**: Converts between coordinate systems
+
+## Coordinate Systems
+| System | Handedness | Up | Forward |
+|--------|------------|-------|---------|
+| Unity | Left | Y | Z |
+| OpenGL | Right | Y | -Z |
+";
+            File.WriteAllText(Path.Combine(folder, "_README.md"), readme);
+        }
+
+        private void CreateDataReadme(string folder)
+        {
+            var readme = @"# XR Data Structures
+
+Common data structures used across XR subsystems.
+
+## Structures
+- **XRIMUData**: IMU sensor data
+- **XRHandPose**: Hand tracking data
+";
+            File.WriteAllText(Path.Combine(folder, "_README.md"), readme);
         }
     }
 }
