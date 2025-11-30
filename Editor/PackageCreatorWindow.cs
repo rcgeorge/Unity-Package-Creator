@@ -306,6 +306,9 @@ namespace Instemic.PackageCreator.Editor
             
             // PHASE 1: Create Data Structures
             CreateXRDataStructuresTemplate(Path.Combine(packagePath, "Runtime", "Data"), packageId);
+            
+            // Debug Overlay
+            CreateXRDebugOverlayTemplate(Path.Combine(packagePath, "Runtime", "Scripts"), packageId);
 
             // Create helper README files
             CreateSubsystemsReadme(Path.Combine(packagePath, "Runtime", "Subsystems"));
@@ -663,6 +666,13 @@ namespace Instemic.PackageCreator.Editor
             code.AppendLine();
             code.AppendLine("        /// <summary>Whether debug logging is enabled.</summary>");
             code.AppendLine("        public bool EnableDebugLogging => enableDebugLogging;");
+            code.AppendLine();
+            code.AppendLine("        [SerializeField]");
+            code.AppendLine("        [Tooltip(\"Show debug overlay with FPS, display info, tracking status\")]");
+            code.AppendLine("        private bool showDebugOverlay = true;");
+            code.AppendLine();
+            code.AppendLine("        /// <summary>Whether debug overlay is enabled.</summary>");
+            code.AppendLine("        public bool ShowDebugOverlay => showDebugOverlay;");
             code.AppendLine();
             code.AppendLine("        [Header(\"Display Settings\")]");
             code.AppendLine();
@@ -2346,6 +2356,130 @@ Common data structures used across XR subsystems.
             code.AppendLine("        {");
             code.AppendLine("            currentFPS = 1.0f / Time.deltaTime;");
             code.AppendLine("            // TODO: Calculate average FPS and detect dropped frames");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRDebugOverlayTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "DebugOverlay";
+            string settingsClassName = ToPascalCase(packageName) + "Settings";
+            string performanceClassName = ToPascalCase(packageName) + "PerformanceMonitor";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine("using UnityEngine.XR.Management;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    /// <summary>");
+            code.AppendLine("    /// Debug overlay for XR plugin - shows FPS, display info, tracking status.");
+            code.AppendLine("    /// Add this component to a GameObject in your scene for instant visual feedback.");
+            code.AppendLine("    /// Toggle visibility via XR Plug-in Management settings.");
+            code.AppendLine("    /// </summary>");
+            code.AppendLine("    public class " + className + " : MonoBehaviour");
+            code.AppendLine("    {");
+            code.AppendLine("        private " + performanceClassName + " perfMonitor;");
+            code.AppendLine("        private bool isVisible = true;");
+            code.AppendLine("        private GUIStyle labelStyle;");
+            code.AppendLine("        private GUIStyle headerStyle;");
+            code.AppendLine();
+            code.AppendLine("        private void Start()");
+            code.AppendLine("        {");
+            code.AppendLine("            perfMonitor = new " + performanceClassName + "();");
+            code.AppendLine("            ");
+            code.AppendLine("            // Check settings for overlay visibility");
+            code.AppendLine("#if UNITY_EDITOR");
+            code.AppendLine("            var settings = " + settingsClassName + ".GetSettings(UnityEditor.EditorUserBuildSettings.selectedBuildTargetGroup);");
+            code.AppendLine("#else");
+            code.AppendLine("            var settings = Resources.FindObjectsOfTypeAll<" + settingsClassName + ">();");
+            code.AppendLine("#endif");
+            code.AppendLine("            if (settings != null)");
+            code.AppendLine("            {");
+            code.AppendLine("#if UNITY_EDITOR");
+            code.AppendLine("                isVisible = settings.ShowDebugOverlay;");
+            code.AppendLine("#else");
+            code.AppendLine("                isVisible = settings.Length > 0 && settings[0].ShowDebugOverlay;");
+            code.AppendLine("#endif");
+            code.AppendLine("            }");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private void Update()");
+            code.AppendLine("        {");
+            code.AppendLine("            perfMonitor?.Update();");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private void OnGUI()");
+            code.AppendLine("        {");
+            code.AppendLine("            if (!isVisible) return;");
+            code.AppendLine();
+            code.AppendLine("            // Initialize styles");
+            code.AppendLine("            if (labelStyle == null)");
+            code.AppendLine("            {");
+            code.AppendLine("                labelStyle = new GUIStyle(GUI.skin.label)");
+            code.AppendLine("                {");
+            code.AppendLine("                    fontSize = 24,");
+            code.AppendLine("                    normal = { textColor = Color.white },");
+            code.AppendLine("                    fontStyle = FontStyle.Bold");
+            code.AppendLine("                };");
+            code.AppendLine();
+            code.AppendLine("                headerStyle = new GUIStyle(labelStyle)");
+            code.AppendLine("                {");
+            code.AppendLine("                    fontSize = 28,");
+            code.AppendLine("                    normal = { textColor = Color.green }");
+            code.AppendLine("                };");
+            code.AppendLine("            }");
+            code.AppendLine();
+            code.AppendLine("            // Draw semi-transparent background");
+            code.AppendLine("            GUI.Box(new Rect(10, 10, 400, 300), \"\");");
+            code.AppendLine();
+            code.AppendLine("            float y = 20;");
+            code.AppendLine("            float lineHeight = 35;");
+            code.AppendLine();
+            code.AppendLine("            // Header");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), \"XR Debug Info\", headerStyle);");
+            code.AppendLine("            y += lineHeight + 10;");
+            code.AppendLine();
+            code.AppendLine("            // FPS");
+            code.AppendLine("            float fps = perfMonitor?.CurrentFPS ?? 0;");
+            code.AppendLine("            Color fpsColor = fps >= 60 ? Color.green : (fps >= 30 ? Color.yellow : Color.red);");
+            code.AppendLine("            labelStyle.normal.textColor = fpsColor;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"FPS: {fps:F1}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Reset color");
+            code.AppendLine("            labelStyle.normal.textColor = Color.white;");
+            code.AppendLine();
+            code.AppendLine("            // Display Info");
+            code.AppendLine("            int displayCount = Display.displays.Length;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"Displays: {displayCount}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Active Display");
+            code.AppendLine("            int activeDisplay = Camera.main?.targetDisplay ?? 0;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"Active Display: {activeDisplay}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // XR Active");
+            code.AppendLine("            bool xrActive = XRGeneralSettings.Instance?.Manager?.activeLoader != null;");
+            code.AppendLine("            labelStyle.normal.textColor = xrActive ? Color.green : Color.red;");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"XR Active: {(xrActive ? \\\"Yes\\\" : \\\"No\\\")}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Reset color");
+            code.AppendLine("            labelStyle.normal.textColor = Color.white;");
+            code.AppendLine();
+            code.AppendLine("            // Resolution");
+            code.AppendLine("            GUI.Label(new Rect(20, y, 380, 30), $\"Resolution: {Screen.width}x{Screen.height}\", labelStyle);");
+            code.AppendLine("            y += lineHeight;");
+            code.AppendLine();
+            code.AppendLine("            // Toggle hint");
+            code.AppendLine("            labelStyle.fontSize = 18;");
+            code.AppendLine("            labelStyle.normal.textColor = Color.gray;");
+            code.AppendLine("            GUI.Label(new Rect(20, y + 20, 380, 30), \"Toggle in XR Plug-in Settings\", labelStyle);");
             code.AppendLine("        }");
             code.AppendLine("    }");
             code.AppendLine("}");
