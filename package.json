@@ -1,6 +1,6 @@
 {
   "name": "com.instemic.package-creator",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "displayName": "Unity Package Creator",
   "description": "A Unity Editor tool for creating UPM (Unity Package Manager) packages with multiple templates including XR Plugin Providers",
   "unity": "6000.2",
