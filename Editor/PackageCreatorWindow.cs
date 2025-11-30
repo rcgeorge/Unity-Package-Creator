@@ -298,6 +298,12 @@ namespace Instemic.PackageCreator.Editor
             // PHASE 1: Create Utilities
             CreateXRCoordinateConverterTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
             
+            // PHASE 3: Create Advanced Utilities
+            CreateXRFeatureDetectorTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            CreateXRTrackingModeManagerTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            CreateXRCalibrationManagerTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            CreateXRPerformanceMonitorTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            
             // PHASE 1: Create Data Structures
             CreateXRDataStructuresTemplate(Path.Combine(packagePath, "Runtime", "Data"), packageId);
 
@@ -1999,6 +2005,10 @@ Helper utilities for XR development.
 
 ## Files
 - **XRCoordinateConverter**: Converts between coordinate systems
+- **XRFeatureDetector**: Detects device capabilities
+- **XRTrackingModeManager**: Manages 3DOF/6DOF tracking modes
+- **XRCalibrationManager**: Handles IPD, height, tracking reset
+- **XRPerformanceMonitor**: Monitors FPS, latency, dropped frames
 
 ## Coordinate Systems
 | System | Handedness | Up | Forward |
@@ -2191,6 +2201,151 @@ Common data structures used across XR subsystems.
             code.AppendLine("        {");
             code.AppendLine("            Stop();");
             code.AppendLine("            state = LifecycleState.Uninitialized;");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        // ========================================
+        // PHASE 3: ADVANCED UTILITIES
+        // ========================================
+
+        private void CreateXRFeatureDetectorTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "FeatureDetector";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum Feature");
+            code.AppendLine("        {");
+            code.AppendLine("            RotationalTracking,");
+            code.AppendLine("            PositionalTracking,");
+            code.AppendLine("            HandTracking,");
+            code.AppendLine("            EyeTracking,");
+            code.AppendLine("            SpatialMapping,");
+            code.AppendLine("            Passthrough");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool IsSupported(Feature feature)");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Implement feature detection for your device");
+            code.AppendLine("            return false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual string GetDeviceName()");
+            code.AppendLine("        {");
+            code.AppendLine("            return \"Unknown Device\";");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRTrackingModeManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "TrackingModeManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum TrackingMode");
+            code.AppendLine("        {");
+            code.AppendLine("            None,");
+            code.AppendLine("            ThreeDOF,");
+            code.AppendLine("            SixDOF,");
+            code.AppendLine("            WorldScale");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private TrackingMode currentMode = TrackingMode.None;");
+            code.AppendLine("        public TrackingMode CurrentMode => currentMode;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool SetTrackingMode(TrackingMode mode)");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Implement mode switching");
+            code.AppendLine("            currentMode = mode;");
+            code.AppendLine("            return true;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public virtual void ResetTracking()");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Reset tracking origin");
+            code.AppendLine("        }");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRCalibrationManagerTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "CalibrationManager";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        public enum CalibrationType");
+            code.AppendLine("        {");
+            code.AppendLine("            IPD,");
+            code.AppendLine("            Height,");
+            code.AppendLine("            TrackingOrigin,");
+            code.AppendLine("            DisplayAlignment");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        private float ipd = 0.063f;");
+            code.AppendLine();
+            code.AppendLine("        public virtual bool Calibrate(CalibrationType type)");
+            code.AppendLine("        {");
+            code.AppendLine("            // TODO: Implement calibration");
+            code.AppendLine("            return false;");
+            code.AppendLine("        }");
+            code.AppendLine();
+            code.AppendLine("        public float GetIPD() => ipd;");
+            code.AppendLine("        public void SetIPD(float value) => ipd = value;");
+            code.AppendLine("    }");
+            code.AppendLine("}");
+            
+            File.WriteAllText(Path.Combine(folder, $"{className}.cs"), code.ToString());
+        }
+
+        private void CreateXRPerformanceMonitorTemplate(string folder, string packageId)
+        {
+            string className = ToPascalCase(packageName) + "PerformanceMonitor";
+            var code = new System.Text.StringBuilder();
+            
+            code.AppendLine("using UnityEngine;");
+            code.AppendLine();
+            code.AppendLine($"namespace {GetNamespace(packageId)}");
+            code.AppendLine("{");
+            code.AppendLine("    public class " + className);
+            code.AppendLine("    {");
+            code.AppendLine("        private float currentFPS;");
+            code.AppendLine("        private float averageFPS;");
+            code.AppendLine("        private int droppedFrames;");
+            code.AppendLine();
+            code.AppendLine("        public float CurrentFPS => currentFPS;");
+            code.AppendLine("        public float AverageFPS => averageFPS;");
+            code.AppendLine("        public int DroppedFrames => droppedFrames;");
+            code.AppendLine();
+            code.AppendLine("        public void Update()");
+            code.AppendLine("        {");
+            code.AppendLine("            currentFPS = 1.0f / Time.deltaTime;");
+            code.AppendLine("            // TODO: Calculate average FPS and detect dropped frames");
             code.AppendLine("        }");
             code.AppendLine("    }");
             code.AppendLine("}");
