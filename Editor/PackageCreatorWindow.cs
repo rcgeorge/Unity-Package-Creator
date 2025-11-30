@@ -249,6 +249,9 @@ namespace Instemic.PackageCreator.Editor
             // Create directories
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Scripts"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Subsystems"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Core"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Utilities"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Data"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "Android"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Runtime", "Plugins", "iOS"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Editor", "Scripts"));
@@ -256,20 +259,20 @@ namespace Instemic.PackageCreator.Editor
             Directory.CreateDirectory(Path.Combine(packagePath, "Tests", "Runtime"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Samples~"));
             Directory.CreateDirectory(Path.Combine(packagePath, "Documentation~"));
-            
+
             // Create package.json with XR dependencies
             var dependencies = new Dictionary<string, string>
             {
                 { "com.unity.xr.management", "4.0.0" }
             };
             CreatePackageJson(packagePath, packageId, dependencies);
-            
+
             // Create assembly definition files with XR references
             CreateAsmdef(Path.Combine(packagePath, "Runtime"), $"{packageId}", packageId, false, new[] { "Unity.XR.Management" });
             CreateAsmdef(Path.Combine(packagePath, "Editor"), $"{packageId}.Editor", $"{packageId}.Editor", true, new[] { packageId, "Unity.XR.Management.Editor" });
             CreateTestAsmdef(Path.Combine(packagePath, "Tests", "Runtime"), $"{packageId}.Tests", packageId, false);
             CreateTestAsmdef(Path.Combine(packagePath, "Tests", "Editor"), $"{packageId}.Editor.Tests", $"{packageId}.Editor", true);
-            
+
             // Create XR-specific template files
             CreateXRLoaderTemplate(Path.Combine(packagePath, "Runtime", "Scripts"), packageId);
             CreateXRSettingsTemplate(Path.Combine(packagePath, "Runtime", "Scripts"), packageId);
@@ -280,13 +283,36 @@ namespace Instemic.PackageCreator.Editor
             CreateDisplaySubsystemExample(Path.Combine(packagePath, "Runtime", "Subsystems"), packageId);
             CreateInputSubsystemStub(Path.Combine(packagePath, "Runtime", "Subsystems"), packageId);
 
+            // Create Core components (universal XR patterns)
+            CreateXREventSystemTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXRPermissionManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXRLifecycleManagerTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXRServiceConnectionTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+            CreateXRMemoryBridgeTemplate(Path.Combine(packagePath, "Runtime", "Core"), packageId);
+
+            // Create Utility components
+            CreateXRCoordinateConverterTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            CreateXRFeatureDetectorTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            CreateXRTrackingModeManagerTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            CreateXRCalibrationManagerTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+            CreateXRPerformanceMonitorTemplate(Path.Combine(packagePath, "Runtime", "Utilities"), packageId);
+
+            // Create Data structures
+            CreateXRDataStructuresTemplate(Path.Combine(packagePath, "Runtime", "Data"), packageId);
+
             // Create helper README files
             CreateSubsystemsReadme(Path.Combine(packagePath, "Runtime", "Subsystems"));
             CreatePluginsReadme(Path.Combine(packagePath, "Runtime", "Plugins"));
+            CreateCoreReadme(Path.Combine(packagePath, "Runtime", "Core"));
+            CreateUtilitiesReadme(Path.Combine(packagePath, "Runtime", "Utilities"));
+            CreateDataReadme(Path.Combine(packagePath, "Runtime", "Data"));
 
             // Create XR-specific documentation
             CreateGettingStarted(packagePath, packageId);
             CreateArchitectureDoc(packagePath, packageId);
+            CreateServiceIntegrationDoc(packagePath, packageId);
+            CreateCoordinateSystemsDoc(packagePath, packageId);
+            CreatePerformanceGuideDoc(packagePath, packageId);
         }
 
         private void CreateEditorOnlyPackage(string packagePath, string packageId)
